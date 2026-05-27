@@ -66,12 +66,19 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+function allowIframe(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.delete("X-Frame-Options");
+  headers.set("Content-Security-Policy", headers.get("Content-Security-Policy")?.replace(/frame-ancestors[^;]*(;|$)/, "") ?? "");
+  return new Response(response.body, { status: response.status, headers });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return allowIframe(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
       return brandedErrorResponse();
